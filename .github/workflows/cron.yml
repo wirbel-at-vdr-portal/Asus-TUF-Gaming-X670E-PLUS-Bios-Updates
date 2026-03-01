@@ -1,7 +1,7 @@
 on:
   push: # push from GitHub Actions will not trigger this workflow
   schedule:
-  - cron: '38 14 * * *'
+  - cron: '38 7 * * *'
 concurrency: cron
 defaults:
   run:
