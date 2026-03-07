@@ -21,6 +21,7 @@ class BIOSRelease:
     title: str
     url: str
     description: str
+    isRelease: bool
 
 
 def fetch() -> list[BIOSRelease]:
@@ -41,6 +42,7 @@ def fetch() -> list[BIOSRelease]:
             title=bios_file['Title'],
             url=bios_file['DownloadUrl']['Global'].split('?', 1)[0],
             description=description,
+            isRelease=(bios_file['IsRelease'] == '1'),
         ))
     return result
 
@@ -83,6 +85,8 @@ def main() -> None:
         if re.fullmatch(r'\d+', bios.version) and bios.title == '':
             bios.title = f'TUF GAMING X670E-PLUS BIOS {bios.version}'
         assert bios.title.strip(), bios
+        if bios.isRelease == False:
+            bios.title = bios.title + ' (BETA)'
         if bios.title in state:
             continue
         logger.info('processing %s', bios.title)
