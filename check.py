@@ -86,7 +86,7 @@ def main() -> None:
             bios.title = f'TUF GAMING X670E-PLUS BIOS {bios.version}'
         assert bios.title.strip(), bios
         if bios.isRelease == False:
-            bios.title = bios.title + ' (BETA)'
+            bios.title = bios.title + '_BETA'
         if bios.title in state:
             continue
         logger.info('processing %s', bios.title)
