@@ -36,6 +36,6 @@ jobs:
         [ -z "$(git status --porcelain)" ] && exit 0
         git config --local user.name 'GitHub Actions'
         git config --local user.email "$(whoami)@$(hostname --fqdn)"
-        git add state.txt
+        git add state.txt pages.txt
         git commit -m '[gh-actions] update state'
         git push "https://dummy:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:master
