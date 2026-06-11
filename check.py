@@ -68,14 +68,17 @@ def get_download_filename(url, fname):
 
 
 def fetch() -> list[BIOSRelease]:
+    result = []
     url = 'https://www.asus.com/support/api/product.asmx/GetPDBIOS?website=global&pdid=20974'
     rsp = requests.get(url, headers={'User-Agent': 'Mozilla'})
+    if rsp.status_code == 403 or rsp.status_code == 408:
+       logger.info(f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text})
+       return result # too much traffic, bad request or timeout.
     assert rsp.status_code == 200, f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}'
     body = rsp.json()
     assert body['Status'] == 'SUCCESS', rsp.text
     obj = body['Result']['Obj'][0]
     assert obj['Name'] == 'BIOS', rsp.text
-    result = []
     for bios_file in obj['Files']:
         description = bios_file['Description'].strip('"').replace('<br/>', '\n')
         description = re.sub(r'\n*Before running the USB BIOS Flashback tool, please rename the BIOS file ?\(TX670EPL\.CAP\) using BIOSRenamer\.\n*', '', description)
