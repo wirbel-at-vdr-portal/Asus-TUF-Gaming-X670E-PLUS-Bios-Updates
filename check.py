@@ -72,7 +72,7 @@ def fetch() -> list[BIOSRelease]:
     url = 'https://www.asus.com/support/api/product.asmx/GetPDBIOS?website=global&pdid=20974'
     rsp = requests.get(url, headers={'User-Agent': 'Mozilla'})
     if rsp.status_code == 403 or rsp.status_code == 408:
-       logger.info(f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text})
+       logger.info(f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}')
        return result # too much traffic, bad request or timeout.
     assert rsp.status_code == 200, f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}'
     body = rsp.json()
