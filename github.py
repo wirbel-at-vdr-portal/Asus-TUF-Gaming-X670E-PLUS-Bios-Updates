@@ -4,7 +4,7 @@ import datetime
 import io
 import logging
 import os
-import requests
+from curl_cffi import requests
 import subprocess
 
 logger = logging.getLogger(__name__)
