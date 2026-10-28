@@ -6,12 +6,13 @@ import github
 import logging
 import pathlib
 import re
-import requests
 import tempfile
 import zoneinfo
 import time
 import random
 from bs4 import BeautifulSoup
+from curl_cffi import requests
+
 
 a = [['d', 'x', 'x', '|', '\x7f', '6', '#', '#', 'h', '~', 'e', 'z', 'i', '"', 'k', 'c', 'c', 'k', '`', 'i', '"', 'o', 'c', 'a'],
      ['E', 'Y', 'Y', ']', '^', '\x17', '\x02', '\x02', '_', 'B', 'J', '\x00', 'K', 'B', '_', 'X', '@', '\x03', 'L', '^', 'X', '^', '\x03', 'N', 'B', '@', '\x02', 'Y', '\x18', '\x02', 'L', '@', 'I', '\x00', '\x1b', '\x1d', '\x1d', '\x00', '^', 'H', '_', 'D', 'H', '^', '\x02', 'U', '\x1b', '\x1a', '\x1d', '\x00', 'U', '\x15', '\x1a', '\x1d', '\x00', '_', 'H', '^', 'B', 'X', '_', 'N', 'H', '\x00', 'Y', 'E', '_', 'H', 'L', 'I', '\x02', 'Y', 'I', '\x00', ']', '\x02', '\x14', '\x1d', '\x1c', '\x18', '\x1a', '\x1b', '\x02', ']', 'L', 'J', 'H', '\x02'],
@@ -52,9 +53,11 @@ def get_link(url):
    return url
 
 
-def get_download_filename(url, fname):
+def get_download_filename(url, fname, session, my_browser):
    try:
-      rsp = requests.head(url, allow_redirects=True)
+      client = session if session else requests
+
+      rsp = client.head(url, allow_redirects=True, impersonate=my_browser)
       time.sleep(random.uniform(2, 5))
       cd = rsp.headers.get(obf(a3,25))
       if cd:
@@ -67,42 +70,58 @@ def get_download_filename(url, fname):
    return fname
 
 
-def fetch() -> list[BIOSRelease]:
-    result = []
-    url = 'https://www.asus.com/support/api/product.asmx/GetPDBIOS?website=global&pdid=20974'
-    rsp = requests.get(url, headers={'User-Agent': 'Mozilla'})
-    if rsp.status_code == 403 or rsp.status_code == 408:
-       logger.info(f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}')
-       return result # too much traffic, bad request or timeout.
-    assert rsp.status_code == 200, f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}'
-    body = rsp.json()
-    assert body['Status'] == 'SUCCESS', rsp.text
-    obj = body['Result']['Obj'][0]
-    assert obj['Name'] == 'BIOS', rsp.text
-    for bios_file in obj['Files']:
-        description = bios_file['Description'].strip('"').replace('<br/>', '\n')
-        description = re.sub(r'\n*Before running the USB BIOS Flashback tool, please rename the BIOS file ?\(TX670EPL\.CAP\) using BIOSRenamer\.\n*', '', description)
-        url_str = bios_file['DownloadUrl']['Global'].split('?', 1)[0]
-        result.append(BIOSRelease(
-            date=datetime.date.fromisoformat(bios_file['ReleaseDate'].replace('/', '-')),
-            version=bios_file['Version'],
-            title=bios_file['Title'],
-            url=url_str,
-            description=description,
-            isRelease=(bios_file['IsRelease'] == '1'),
-            filename=url_str.rsplit('/', 1)[-1],
-        ))
-    return result
+# DEAD API, SINCE 10/2026; wait and remove later.
 
 
-def fetch2(page = None) -> list[BIOSRelease]:
+##def fetch() -> list[BIOSRelease]:
+##    result = []
+##    url = 'https://www.asus.com/support/api/product.asmx/GetPDBIOS?website=global&pdid=20974'
+##    rsp = requests.get(url, headers={'User-Agent': 'Mozilla'})
+##    if rsp.status_code == 403 or rsp.status_code == 408:
+##       logger.info(f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}')
+##       return result # too much traffic, bad request or timeout.
+##    assert rsp.status_code == 200, f'HTTP {rsp.status_code} {rsp.reason}\n{rsp.text}'
+##    body = rsp.json()
+##    assert body['Status'] == 'SUCCESS', rsp.text
+##    obj = body['Result']['Obj'][0]
+##    assert obj['Name'] == 'BIOS', rsp.text
+##    for bios_file in obj['Files']:
+##        description = bios_file['Description'].strip('"').replace('<br/>', '\n')
+##        description = re.sub(r'\n*Before running the USB BIOS Flashback tool, please rename the BIOS file ?\(TX670EPL\.CAP\) using BIOSRenamer\.\n*', '', description)
+##        url_str = bios_file['DownloadUrl']['Global'].split('?', 1)[0]
+##        result.append(BIOSRelease(
+##            date=datetime.date.fromisoformat(bios_file['ReleaseDate'].replace('/', '-')),
+##            version=bios_file['Version'],
+##            title=bios_file['Title'],
+##            url=url_str,
+##            description=description,
+##            isRelease=(bios_file['IsRelease'] == '1'),
+##            filename=url_str.rsplit('/', 1)[-1],
+##        ))
+##    return result
+
+
+
+def fetch2(page = None, counter = 0) -> list[BIOSRelease]:
    if page is None:
       page = startpage
    print("fetch " + str(page))
    result = []
    url = url_base + str(page)
-   rsp = requests.get(url, headers={"User-Agent": obf(a[4],77)})
+
+   counter = counter + 1
+
+
+   my_browser = "chrome" # "chrome", "chrome110", "chrome120", "edge", "safari"
+   
+   session = requests.Session()
+   response_start = session.get("https://rog-forum.asus.com/", impersonate = my_browser)
+   time.sleep(random.uniform(2, 5))
+   
+   rsp = session.get(url, impersonate=my_browser)
+   #obf(a[4],77)})
    if rsp.status_code != 200:
+      print(f"rsp.status_code = {rsp.status_code}")
       return set()
    time.sleep(random.uniform(2, 5))
 
@@ -110,7 +129,9 @@ def fetch2(page = None) -> list[BIOSRelease]:
    if page not in pages:
       pages.add(page)
       save_pages(pages)
-
+   
+   print(f"rsp.status_code = {rsp.status_code}")
+   
    soup = BeautifulSoup(rsp.text, "html.parser")
    tag_next = soup.find("link", rel="next")
    next_page = 0
@@ -168,7 +189,7 @@ def fetch2(page = None) -> list[BIOSRelease]:
                   if obf(a[0],12) in href and "id=" in href:
                      file_id = href.split("id=")[-1]
                      if len(file_id) > 20:
-                        fname = get_download_filename(href, bios_info.replace(" ", "-") + ".7z")
+                        fname = get_download_filename(href, bios_info.replace(" ", "-") + ".7z", session, my_browser)
                      else:
                         continue
                   else:
@@ -193,8 +214,8 @@ def fetch2(page = None) -> list[BIOSRelease]:
                      isRelease=isRelease,
                      filename=fname,
                      ))
-   if next_page > 0:
-      nxtItems = fetch2(next_page)
+   if next_page > 0 and counter < 5:
+      nxtItems = fetch2(next_page, counter)
       if len(nxtItems) > 0:
          for nxt in nxtItems:
             result.append(nxt)
@@ -266,20 +287,21 @@ def main() -> None:
       global startpage
       startpage = pages[1]
 
-   BiosList = fetch()
-   if len(BiosList) > 0:
-      for bios in BiosList:
-         if re.fullmatch(r'\d+', bios.version) and bios.title == '':
-            bios.title = f'TUF GAMING X670E-PLUS BIOS {bios.version}'
-         assert bios.title.strip(), bios
-         if bios.isRelease == False:
-            bios.title = bios.title + '_BETA'
-         if bios.title in state:
-            continue
-         logger.info('processing %s', bios.title)
-         process(bios)
-         state.add(bios.title)
-         save_state(state)
+##   BiosList = fetch()
+##   if len(BiosList) > 0:
+##      for bios in BiosList:
+##         if re.fullmatch(r'\d+', bios.version) and bios.title == '':
+##            bios.title = f'TUF GAMING X670E-PLUS BIOS {bios.version}'
+##         assert bios.title.strip(), bios
+##         if bios.isRelease == False:
+##            bios.title = bios.title + '_BETA'
+##         if bios.title in state:
+##            continue
+##         logger.info('processing %s', bios.title)
+##         process(bios)
+##         state.add(bios.title)
+##         save_state(state)
+
    BiosList = fetch2()
    if len(BiosList) > 0:
       for bios in BiosList:
