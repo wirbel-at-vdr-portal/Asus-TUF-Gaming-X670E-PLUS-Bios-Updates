@@ -122,6 +122,7 @@ def fetch2(page = None, counter = 0) -> list[BIOSRelease]:
    #obf(a[4],77)})
    if rsp.status_code != 200:
       print(f"rsp.status_code = {rsp.status_code}")
+      print(rsp.text)  
       return set()
    time.sleep(random.uniform(2, 5))
 
